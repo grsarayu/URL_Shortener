@@ -1,95 +1,111 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const fs = require('fs');
+const mongoose = require('mongoose');
 const path = require('path');
 const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 3000; // Use Render's port or 3000 for local dev
+const PORT = process.env.PORT || 3000;
 
-// Define the path for our persistent data store
-// On Render, this will be a persistent disk. Locally, it's just 'links.json'.
-const dataDir = '/var/data';
-const DB_PATH = process.env.RENDER ? path.join(dataDir, 'links.json') : path.join(__dirname, 'links.json');
-
-// On Render, ensure the database file exists on startup.
-// The persistent disk might be empty on first boot.
-if (process.env.RENDER && !fs.existsSync(DB_PATH)) {
-    fs.writeFileSync(DB_PATH, JSON.stringify({}, null, 2));
-}
-
-// Middleware
+// --- Middleware ---
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static(__dirname)); // Serve static files
+app.use(express.static(__dirname)); // Serve static files like index.html
 
-// Function to read the database
-const readDb = () => {
-    try {
-        const data = fs.readFileSync(DB_PATH, 'utf8');
-        return JSON.parse(data);
-    } catch (error) {
-        // If the file doesn't exist, return an empty object
-        if (error.code === 'ENOENT') {
-            return {};
-        }
-        throw error;
-    }
-};
+// --- MongoDB Connection ---
+const mongoUri = process.env.MONGO_URI;
 
-// Function to write to the database
-const writeDb = (data) => {
-    fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
-};
+if (!mongoUri) {
+    console.error('FATAL ERROR: MONGO_URI is not defined.');
+    process.exit(1);
+}
 
-// API Endpoint to shorten a URL
-app.post('/shorten', (req, res) => {
+mongoose.connect(mongoUri)
+    .then(() => console.log('MongoDB connected successfully.'))
+    .catch(err => {
+        console.error('MongoDB connection error:', err);
+        process.exit(1);
+    });
+
+// --- Mongoose Schema & Model ---
+const linkSchema = new mongoose.Schema({
+    shortCode: { type: String, required: true, unique: true },
+    longUrl: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
+    clicks: { type: Number, default: 0 }
+});
+
+const Link = mongoose.model('Link', linkSchema);
+
+// --- API Endpoints ---
+
+// Shorten URL
+app.post('/shorten', async (req, res) => {
     const { longUrl, customCode } = req.body;
 
     if (!longUrl) {
         return res.status(400).json({ error: 'longUrl is required' });
     }
 
-    const db = readDb();
-    let shortCode = customCode;
+    try {
+        let shortCode = customCode;
 
-    if (shortCode) {
-        if (db[shortCode]) {
-            return res.status(400).json({ error: 'Custom code already exists' });
+        if (shortCode) {
+            // Check if custom code already exists
+            const existing = await Link.findOne({ shortCode });
+            if (existing) {
+                return res.status(400).json({ error: 'Custom code already taken.' });
+            }
+        } else {
+            // Generate a unique random short code
+            let isUnique = false;
+            while (!isUnique) {
+                shortCode = Math.random().toString(36).substring(2, 8);
+                const existing = await Link.findOne({ shortCode });
+                if (!existing) {
+                    isUnique = true;
+                }
+            }
         }
-    } else {
-        // Generate a random short code
-        do {
-            shortCode = Math.random().toString(36).substring(2, 8);
-        } while (db[shortCode]);
+
+        const newLink = new Link({ longUrl, shortCode });
+        await newLink.save();
+
+        const shortUrl = `${req.protocol}://${req.get('host')}/${shortCode}`;
+        res.status(201).json({ shortUrl });
+
+    } catch (error) {
+        console.error('Error creating short link:', error);
+        res.status(500).json({ error: 'Server error, please try again.' });
     }
-
-    db[shortCode] = {
-        longUrl,
-        createdAt: new Date().toISOString(),
-        clicks: 0,
-    };
-
-    writeDb(db);
-
-    const shortUrl = `${req.protocol}://${req.get('host')}/${shortCode}`;
-    res.status(201).json({ shortUrl });
 });
 
-// Redirect Endpoint
-app.get('/:shortCode', (req, res) => {
+// Redirect short URL
+app.get('/:shortCode', async (req, res) => {
     const { shortCode } = req.params;
-    const db = readDb();
 
-    if (db[shortCode]) {
-        db[shortCode].clicks++;
-        writeDb(db);
-        res.redirect(db[shortCode].longUrl);
-    } else {
-        res.status(404).sendFile(path.join(__dirname, '404.html'));
+    // Ignore requests for static files
+    if (shortCode === 'index.html' || shortCode === 'style.css' || shortCode === 'script.js' || shortCode === 'favicon.ico') {
+        return res.sendFile(path.join(__dirname, shortCode));
+    }
+
+    try {
+        const link = await Link.findOne({ shortCode });
+
+        if (link) {
+            link.clicks++;
+            await link.save();
+            return res.redirect(link.longUrl);
+        } else {
+            return res.status(404).sendFile(path.join(__dirname, '404.html'));
+        }
+    } catch (error) {
+        console.error('Error finding short link:', error);
+        return res.status(500).json({ error: 'Server error.' });
     }
 });
 
+// --- Server Start ---
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 }); 
