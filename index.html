@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener - Shorten Your Links</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-link"></i>
+                <h1>URL Shortener</h1>
+            </div>
+            <button class="theme-toggle" id="themeToggle">
+                <i class="fas fa-moon"></i>
+            </button>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- URL Shortening Form -->
+            <div class="url-form-card">
+                <h2>Shorten Your URL</h2>
+                <p class="subtitle">Create short, memorable links that are easy to share</p>
+                
+                <form id="urlForm" class="url-form">
+                    <div class="input-group">
+                        <label for="longUrl">Enter your long URL</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-globe"></i>
+                            <input 
+                                type="url" 
+                                id="longUrl" 
+                                name="longUrl" 
+                                placeholder="https://example.com/very-long-url-that-needs-shortening"
+                                required
+                            >
+                        </div>
+                        <span class="error-message" id="urlError"></span>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="customCode">Custom short code (optional)</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-edit"></i>
+                            <input 
+                                type="text" 
+                                id="customCode" 
+                                name="customCode" 
+                                placeholder="my-custom-link"
+                                pattern="[a-zA-Z0-9-_]+"
+                                title="Only letters, numbers, hyphens, and underscores allowed"
+                            >
+                        </div>
+                        <span class="help-text">Leave empty for auto-generated code</span>
+                    </div>
+
+                    <button type="submit" class="shorten-btn" id="shortenBtn">
+                        <i class="fas fa-magic"></i>
+                        <span>Shorten URL</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results-section" id="resultsSection" style="display: none;">
+                <div class="result-card">
+                    <h3>Your Shortened URL</h3>
+                    <div class="short-url-display">
+                        <div class="url-container">
+                            <span class="short-url" id="shortUrlDisplay"></span>
+                        </div>
+                        <button class="copy-btn" id="copyBtn">
+                            <i class="fas fa-copy"></i>
+                            <span>Copy</span>
+                        </button>
+                    </div>
+                    <div class="url-actions">
+                        <a href="#" class="test-link" id="testLink" target="_blank">
+                            <i class="fas fa-external-link-alt"></i>
+                            Test Link
+                        </a>
+                        <button class="qr-btn" id="qrBtn">
+                            <i class="fas fa-qrcode"></i>
+                            QR Code
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QR Code Modal -->
+            <div class="modal" id="qrModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>QR Code</h3>
+                        <button class="close-btn" id="closeQrModal">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="qrCode"></div>
+                        <p>Scan this QR code to access your shortened URL</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent URLs Section -->
+            <div class="recent-urls-section">
+                <h3>Recent URLs</h3>
+                <div class="recent-urls-list" id="recentUrlsList">
+                    <!-- Recent URLs will be populated here -->
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2024 URL Shortener. Built with ❤️ using HTML, CSS & JavaScript</p>
+        </footer>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div class="loading-spinner" id="loadingSpinner">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
