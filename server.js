@@ -12,6 +12,12 @@ const PORT = process.env.PORT || 3000; // Use Render's port or 3000 for local de
 const dataDir = '/var/data';
 const DB_PATH = process.env.RENDER ? path.join(dataDir, 'links.json') : path.join(__dirname, 'links.json');
 
+// On Render, ensure the database file exists on startup.
+// The persistent disk might be empty on first boot.
+if (process.env.RENDER && !fs.existsSync(DB_PATH)) {
+    fs.writeFileSync(DB_PATH, JSON.stringify({}, null, 2));
+}
+
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
