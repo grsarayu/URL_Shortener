@@ -5,8 +5,17 @@ const path = require('path');
 const cors = require('cors');
 
 const app = express();
-const PORT = 3000;
-const DB_PATH = path.join(__dirname, 'links.json');
+const PORT = process.env.PORT || 3000; // Use Render's port or 3000 for local dev
+
+// Define the path for our persistent data store
+// On Render, this will be a persistent disk. Locally, it's just 'links.json'.
+const dataDir = '/var/data';
+const DB_PATH = process.env.RENDER ? path.join(dataDir, 'links.json') : path.join(__dirname, 'links.json');
+
+// Ensure the data directory exists on Render
+if (process.env.RENDER && !fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+}
 
 // Middleware
 app.use(cors());
